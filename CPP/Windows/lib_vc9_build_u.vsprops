@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="gb2312"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="lib_vc9_build_u"
+	OutputDirectory="..\..\library\$(PlatformName)_vc9_unicode_$(ConfigurationName)"
+	>
+	<Tool
+		Name="VCCLCompilerTool"
+		AdditionalIncludeDirectories="../../include"
+	/>
+	<Tool
+		Name="VCLinkerTool"
+		OutputFile="..\..\library\$(PlatformName)_vc9_unicode_$(ConfigurationName)\$(ProjectName).lib"
+		ImportLibrary="..\..\pdb\$(PlatformName)_vc9_unicode_$(ConfigurationName)\$(ProjectName).pdb"
+	/>
+</VisualStudioPropertySheet>

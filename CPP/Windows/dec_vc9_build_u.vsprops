@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="gb2312"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="dec_vc9_build_u"
+	OutputDirectory="..\..\bin\$(PlatformName)_vc9_unicode_$(ConfigurationName)"
+	>
+	<Tool
+		Name="VCCLCompilerTool"
+		AdditionalIncludeDirectories="../../include/DataStructure;../../include"
+	/>
+	<Tool
+		Name="VCLinkerTool"
+		AdditionalDependencies="BaseTool.lib BaseServiceTool.lib"
+		OutputFile="..\..\bin\$(PlatformName)_vc9_unicode_$(ConfigurationName)\$(ProjectName).dll"
+		AdditionalLibraryDirectories="..\..\library\$(PlatformName)_vc9_unicode_$(ConfigurationName)"
+		GenerateDebugInformation="true"
+		ProgramDatabaseFile="..\..\pdb\$(PlatformName)_vc9_unicode_$(ConfigurationName)\$(ProjectName).pdb"
+		ImportLibrary="..\..\library\$(PlatformName)_vc9_unicode_$(ConfigurationName)\$(ProjectName).lib"
+	/>
+	<UserMacro
+		Name="BOOSTDIR"
+		Value="E:\thirdparty\boost\v1.49"
+		PerformEnvironmentSet="true"
+	/>
+</VisualStudioPropertySheet>

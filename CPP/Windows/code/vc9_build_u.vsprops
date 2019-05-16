@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<VisualStudioPropertySheet
+	ProjectType="Visual C++"
+	Version="8.00"
+	Name="vc9_build_u"
+	OutputDirectory="$(ParentPath)\bin\$(BuildFolder)\"
+	IntermediateDirectory="$(BuildFolder)\"
+	BuildLogFile="$(ParentPath)\BuildLog\$(BuildFolder)\$(ProjectName).htm"
+	>
+	<Tool
+		Name="VCCLCompilerTool"
+		AdditionalIncludeDirectories="..\..\include;..\..\include\thirdparty;$(BOOSTDIR)\include;$(BCGDIR)\include;"
+		XMLDocumentationFileName="$(BuildFolder)\"
+	/>
+	<Tool
+		Name="VCLinkerTool"
+		AdditionalLibraryDirectories="&quot;$(ParentPath)\library\$(BuildFolder)&quot;;&quot;$(BOOSTDIR)\library\$(BuildFolder)&quot;;&quot;$(BCGDIR)\library\$(BuildFolder)&quot;"
+		GenerateDebugInformation="true"
+		ProgramDatabaseFile="$(ParentPath)\pdb\$(BuildFolder)\$(TargetName).pdb"
+		ImportLibrary="$(ParentPath)\library\$(BuildFolder)\$(ProjectName).lib"
+	/>
+	<UserMacro
+		Name="ParentPath"
+		Value="..\.."
+		PerformEnvironmentSet="true"
+	/>
+	<UserMacro
+		Name="BuildFolder"
+		Value="$(PlatformName)_vc9_unicode_$(ConfigurationName)"
+		PerformEnvironmentSet="true"
+	/>
+</VisualStudioPropertySheet>
