@@ -1,5 +1,4 @@
 #pragma once
-#include <string>
 #include <vector>
 #include "StringDef.h"
 #include <sstream>
@@ -12,6 +11,7 @@
 #ifdef UNICODE
 #define ACCESS _waccess
 #define COUT std::wcout
+#define TO_STRING std::to_wstring
 typedef std::wifstream IFileStream;
 typedef std::wofstream OFileStream;
 typedef std::wistringstream IStrStream;
@@ -19,6 +19,7 @@ typedef std::wostringstream OStrStream;
 #else
 #define ACCESS _access
 #define COUT std::cout
+#define TO_STRING std::to_string
 typedef std::ifstream IFileStream;
 typedef std::ofstream OFileStream;
 typedef std::istringstream IStrStream;
@@ -26,7 +27,7 @@ typedef std::ostringstream OStrStream;
 #endif
 
 using namespace std;
-class CStringFormat
+class __declspec(dllexport) CStringFormat
 {
 public:
 	static string U2A(const wstring& str);//Unicode×Ö·û×ªAscii×Ö·û

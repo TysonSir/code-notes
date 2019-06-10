@@ -1,7 +1,8 @@
 #pragma once
 #include "StringDef.h"
-#include "curl\curl.h"
+#include "HttpTool\curl\curl.h"
 #include <map>
+#define  BASELOG_INFO(strFormat, ...)   (_T(__FILE__),__LINE__, _T(__FUNCTION__), strFormat,## __VA_ARGS__)
 using namespace std;
 
 typedef struct PostData
@@ -9,6 +10,7 @@ typedef struct PostData
 	map<BaseString, BaseString> mapHeaders;
 	map<BaseString, BaseString> mapParams;
 	map<BaseString, BaseString> mapFiles;
+	map<BaseString, BaseString> mapJson;
 } PostData;
 
 typedef struct ProgressInfo
@@ -17,7 +19,7 @@ typedef struct ProgressInfo
 	int nUploadRate;
 } ProgressInfo;
 
-class CHttpClient
+class __declspec(dllexport) CHttpClient
 {
 public:
 	~CHttpClient();
@@ -27,7 +29,7 @@ public:
 
 	int HttpGet(const BaseString& strRequestUrl, const BaseString& strSaveTo);
 	int HttpPost(const BaseString& strRequestUrl, const PostData& postData);
-	PostData MakePostData(const BaseString& strData, const BaseString& strUsername, const BaseString& strPassword);
+	virtual PostData MakePostData(const BaseString& strData, const BaseString& strUsername = _T(""), const BaseString& strPassword = _T(""));
 	
 private:
 	CHttpClient();

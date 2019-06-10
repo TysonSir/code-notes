@@ -1,9 +1,9 @@
-#include "CHttpClient.h"
+#include "HttpTool\CHttpClient.h"
 #include "StringFormat.h"
-#include "CWriteLog.h"
+//#include "CWriteLog.h"
 #include <sstream>
 #include <algorithm>
-#include "CBaseRegEdit.h"
+//#include "CBaseRegEdit.h"
 #include <windows.h>
 using namespace std;
 
@@ -96,7 +96,7 @@ int CHttpClient::HttpGet(const BaseString& strRequestUrl, const BaseString& strS
 		}
 		else
 		{
-			BASELOG_INFO_S(_T("HttpGet: curl_easy_perform() OK"));
+			BASELOG_INFO(_T("HttpGet: curl_easy_perform() OK"));
 			BASELOG_INFO(_T("第 %d/3 次 文件打开成功！"), i);
 			ret = 1;
 			break;//下载成功退出循环，否则重试
@@ -206,6 +206,28 @@ int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postD
 		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, FALSE);
 		curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, progress_func);
 
+		// 设置要POST的JSON数据
+		if(!postData.mapJson.empty())
+		{ 
+			BaseString jsonData = postData.mapJson.begin()->second;
+			curl_easy_setopt(curl, CURLOPT_POSTFIELDS, CStringFormat::G2U(CStringFormat::U2A(jsonData).c_str()));
+			//curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, jsonData.size());//设置上传json串长度,这个设置不能写，否则数据长度受影响，导致发送包不全
+		}
+#ifdef _TEST_
+		//保存服务器返回数据-测试用
+		FILE *fp = NULL;
+		BaseString strSaveTo = _T("HttpTool_POST_Response.html");
+#ifdef UNICODE
+		fopen_s(&fp, CStringFormat::U2A(strSaveTo).c_str(), "ab+");
+		const char* szSrc = CStringFormat::U2A(strRequestUrl).c_str();
+#else
+		fopen_s(&fp, strSaveTo.c_str(), "ab+");
+		const char* szSrc = strRequestUrl.c_str();
+#endif	
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &process_data_get);
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+#endif
+
 		/* Perform the request, res will get the return code */
 		res = curl_easy_perform(curl);
 		/* Check for errors */
@@ -227,7 +249,7 @@ int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postD
 			}
 			else
 			{
-				BASELOG_INFO_S(_T("HttpPost: curl_easy_perform() OK"));
+				BASELOG_INFO(_T("HttpPost: curl_easy_perform() OK"));
 				BASELOG_INFO(_T("第 %d/3 次 文件保存成功！"), i);
 				ret = 1;
 				break;
@@ -251,24 +273,31 @@ int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postD
 
 PostData CHttpClient::MakePostData(const BaseString& strData, const BaseString& strUsername, const BaseString& strPassword)
 {
-	//typedef struct PostData
-	//{
-	//	map<BaseString, BaseString> mapParams;
-	//	map<BaseString, BaseString> mapFiles;
-	//} PostData;
 	PostData postData;
-	postData.mapFiles[_T("file")] = strData;
-	//postData.mapHeaders[_T("Referer")] = _T("http://localhost:8000/image/");
-	//添加username和password参数
-	BaseString strData_1 = strData;
-	//CBaseRegEdit queryReg(_T("SOFTWARE\\ppAnaBuL\\")+ SubGuidByPath(strData_1));
-	//queryReg.GetValue(_T("username"),postData.mapParams[_T("username")]);
-	//queryReg.GetValue(_T("password"), postData.mapParams[_T("password")]);
-	postData.mapParams[_T("username")] = strUsername;
-	postData.mapParams[_T("password")] = strPassword;
-	postData.mapHeaders[_T("Referer")] = _T("http://tond365.imwork.net:22368/JsxmAudit/GenerateToken22.jsp");
+	//配置请求数据
 
-	//BASELOG_INFO();
+	//请求头
+	postData.mapHeaders[_T("Host")] = _T("im-test-2.lubansoft.net:8899");
+	postData.mapHeaders[_T("Connection")] = _T("keep-alive");
+	postData.mapHeaders[_T("Content-Length")] = TO_STRING(strData.length());
+	postData.mapHeaders[_T("Accept")] = _T("application/json, text/plain, */*");
+	postData.mapHeaders[_T("Origin")] = _T("http://im-test-2.lubansoft.net:8899");
+	postData.mapHeaders[_T("User-Agnet")] = _T("Mozilla/5.0 (Windows NT 6.2; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36");
+	postData.mapHeaders[_T("Content-Type")] = _T("application/json");
+	postData.mapHeaders[_T("Referer")] = _T("http://im-test-2.lubansoft.net:8899/LBIM/resource/index.html");
+	postData.mapHeaders[_T("Accept-Encoding")] = _T("gzip, deflate");
+	postData.mapHeaders[_T("Accept-Language")] = _T("en-US,en;q=0.8");
+	postData.mapHeaders[_T("Cookie")] = _T("JSESSIONID=0CB39CE6D265276CB16C8E1AC61A587F");
+
+	//请求Json参数
+	postData.mapJson[_T("jsonData")] = strData;
+
+	//<input type="file" />
+	//postData.mapFiles[_T("file")] = strData; //strData 为文件路径
+
+	//<input type="text" />
+	//postData.mapParams[_T("password")] = strPassword;
+
 	return postData;
 }
 
