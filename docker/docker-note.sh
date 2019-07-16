@@ -109,6 +109,7 @@ docker run -d ubuntu:16.04 #镜像名
 
 #以下命令 启动一个持续进程
 docker run -d ubuntu:16.04 /bin/sh -c "while true;do echo hello zzyy;sleep 2;done"
+docker run -d -v /volume_host:/volume_cont ubuntu1604/django:0.5 /bin/sh -c "while true;do echo hello zzyy;sleep 2;done"
 
 ## 不进入容器，操作容器
 
@@ -135,10 +136,21 @@ docker exec -t 9e8a4a1faac1 /bin/bash #同attach
 docker cp [ID]:/tmp/yum.log [主机目录]
 
 #提交新镜像(执行后，可使用 docker images 查看到镜像,并正常使用)
-docker commit -m="ubuntu with ssh.vim.net-tools" -a="TysonSir" 3a80be1013ac tysonsir/base_ubuntu:16.04
+docker commit -m="ubuntu with ssh.vim.net-tools" -a="TysonSir" [CONT_ID] tysonsir/base_ubuntu:16.04
+
+docker commit -m="ubuntu with ssh.vim.net-tools.pip3" -a="TysonSir" 1e8cbc3bc2ea ubuntu1604/django:0.1
+docker commit -m="ubuntu with ssh.vim.net-tools.pip3.django" -a="TysonSir" 11 ubuntu1604/django:0.2
+docker commit -m="ubuntu with ssh.vim.net-tools.pip3.django.office" -a="TysonSir" 11 ubuntu1604/django:0.3
+docker commit -m="ubuntu with ssh.vim.net-tools.pip3.django.libreoffice.Fonts" -a="TysonSir" 11 ubuntu1604/django:0.4
+docker commit -m="ubuntu with 0.4_imtest_djangorun" -a="TysonSir" 11 ubuntu1604/django:0.5
+docker commit -m="ubuntu with 0.5_get report data" -a="TysonSir" f27ef42c2d81 ubuntu1604/django:0.6  #不放心备份，和0.5理论没什么区别
+docker commit -m="ubuntu with 0.6_redis" -a="TysonSir" f27ef42c2d81 ubuntu1604/django:0.7
+docker commit -m="ubuntu with 0.7_projectrun" -a="TysonSir" f27ef42c2d81 ubuntu1604/django:0.7.1  #不放心备份，和0.7理论没什么区别
+docker commit -m="ubuntu with 0.7.1_test data ok" -a="TysonSir" f27ef42c2d81 ubuntu1604/django:0.8  #
 
 #运行应用时设定端口
 docker run -it -p 8888:80 nginx:latest
+docker run -it -v /volume_host:/volume_cont -p 8888:80 ubuntu1604/django:0.5
 -p:设定 主机端口：应用端口
 
 docker run -it -P nginx:latest
@@ -151,7 +163,12 @@ docker run -it 镜像名
 
 ## 容器数据卷（共享文件夹）
 docker run -it -v /主机目录:/容器目录 --privileged=true 镜像名
-docker run -it -v /volume_host:/volume_cont ubuntu:16.04
+docker run -it -v /volume_host:/volume_cont ubuntu1604/django:0.1
+docker run -it -v /volume_host:/volume_cont ubuntu1604/django:0.2
+docker run -it -v /volume_host:/volume_cont -p 8000:8000 -p 6379:6379 -p 2222:22 ubuntu1604/django:0.7.1
+
+docker run -it -v /volume_host:/volume_cont -p 8000:8000 ubuntu1604/django:0.8
+
 --privileged=true:若出现权限问题可用
 #目录不需要准备，能直接建立
 
@@ -191,8 +208,37 @@ docker run -it --name dc03 --volumes-from dc01 ubuntu:16.04
 #镜像/容器 导入导出
 #https://blog.csdn.net/jctian000/article/details/82704252
 docker save cd6d8154f1e1 > /home/myubuntu-save-1204.tar
+docker save cd6d8154f1e1 > ~/docker_images/ubuntu1604-django-office-env-save.tar
+docker save cd6d8154f1e1 > ~/docker_images/ubuntu1604-django-office-redis-env-save.tar
+docker save cd6d8154f1e1 > ~/docker_images/ubuntu1604-django-webreport-ubuntu1604_django:0.8-save.tar
+
 docker load < ./base_ubuntu-save-1604.tar
 
 #导入时标签为None，下面命令改名
 docker tag [image id] [name]:[版本]
 docker tag b03b74b01d97 base_ubuntu:1604
+
+
+#ubuntu 中安装中文字体
+
+#缺少中文字体支付所致，所以先把 c:\Windows\Fonts文件夹复制一份到其它盘，然后打包成Fonts.zip，通过rz Fonts.zip 将压缩包传到服务器上面。
+#mkfontscale需要安装
+apt-get install ttf-mscorefonts-installe
+
+[root@instance-32spzihn /]# cd /usr/share/fonts
+[root@instance-32spzihn fonts]# rz
+[root@instance-32spzihn fonts]# unzip Fonts.zip
+[root@instance-32spzihn fonts]# mv Fonts win
+[root@instance-32spzihn fonts]# cd win
+[root@instance-32spzihn win]# chmod -Rf 755 *
+[root@instance-32spzihn win]# mkfontscale
+[root@instance-32spzihn win]# mkfontdir
+[root@instance-32spzihn win]# fc-cache –fv
+#若没有生效可以试下重启服务器，再重新执行转换命令就可以了。
+
+#Linux下的压缩解压缩命令详解及实例
+#实例：压缩服务器上当前目录的内容为xxx.zip文件
+zip -r xxx.zip ./*
+zip -r /volume_host_back/volume_host_djangorun_0.2.zip ./volume_host
+#解压zip文件到当前目录
+unzip filename.zip

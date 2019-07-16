@@ -73,7 +73,7 @@ int CHttpClient::HttpGet(const BaseString& strRequestUrl, const BaseString& strS
 	curl_easy_setopt(easy_handle, CURLOPT_URL, pBuf);//设置下载地址
 
 	// 设置easy handle属性
-	curl_easy_setopt(easy_handle, CURLOPT_WRITEFUNCTION, &process_data_get);
+	curl_easy_setopt(easy_handle, CURLOPT_WRITEFUNCTION, &process_data_get_file);
 	curl_easy_setopt(easy_handle, CURLOPT_WRITEDATA, fp);
 	curl_easy_setopt(easy_handle, CURLOPT_NOPROGRESS, FALSE);
 	curl_easy_setopt(easy_handle, CURLOPT_PROGRESSFUNCTION, progress_func);
@@ -110,7 +110,7 @@ int CHttpClient::HttpGet(const BaseString& strRequestUrl, const BaseString& strS
 	return ret;
 }
 
-int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postData)
+int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postData, ResponseData& responseData/* = ResponseData()*/)
 {
 	CURL *curl;
 	CURLcode res;
@@ -199,10 +199,12 @@ int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postD
 #else
 		ascii_strRequestUrl = strRequestUrl;
 #endif
-		curl_easy_setopt(curl, CURLOPT_URL, ascii_strRequestUrl.c_str());
+		curl_easy_setopt(curl, CURLOPT_URL, ascii_strRequestUrl.c_str());//请求地址
 		//if ((argc == 2) && (!strcmp(argv[1], "noexpectheader")))/* only disable 100-continue header if explicitly requested */			
 		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);//加载请求头
-		curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);//加载post参数
+		curl_easy_setopt(curl, CURLOPT_HTTPPOST, formpost);//加载post数据：file/param
+
+		//设置进度条
 		curl_easy_setopt(curl, CURLOPT_NOPROGRESS, FALSE);
 		curl_easy_setopt(curl, CURLOPT_PROGRESSFUNCTION, progress_func);
 
@@ -214,7 +216,7 @@ int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postD
 			//curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, jsonData.size());//设置上传json串长度,这个设置不能写，否则数据长度受影响，导致发送包不全
 		}
 #ifdef _TEST_
-		//保存服务器返回数据-测试用
+		//保存服务器返回数据-测试用-存到文件
 		FILE *fp = NULL;
 		BaseString strSaveTo = _T("HttpTool_POST_Response.html");
 #ifdef UNICODE
@@ -224,16 +226,21 @@ int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postD
 		fopen_s(&fp, strSaveTo.c_str(), "ab+");
 		const char* szSrc = strRequestUrl.c_str();
 #endif	
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &process_data_get);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &process_data_get_file);
 		curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
 #endif
+
+		//获取响应数据,保存到content中
+		string content;content.clear();
+		curl_easy_setopt(curl, CURLOPT_WRITEDATA, &content);
+		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &process_data_get_string);
 
 		/* Perform the request, res will get the return code */
 		res = curl_easy_perform(curl);
 		/* Check for errors */
 		
 		int i = 1;
-		while (i <= 3)
+		while (i <= 3)//执行失败，重新执行，最多3次
 		{		
 			if (res != CURLE_OK) 
 			{
@@ -248,10 +255,20 @@ int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postD
 				//hThread = CreateThread(NULL, 0, MessageBoxThread, &BaseString(_T("网络中断，文件保存失败，正在重新保存...")), 0, &threadID);	// 创建线程提示框
 			}
 			else
-			{
+			{//执行成功，做如下操作
 				BASELOG_INFO(_T("HttpPost: curl_easy_perform() OK"));
 				BASELOG_INFO(_T("第 %d/3 次 文件保存成功！"), i);
-				ret = 1;
+				
+				long retcode = 0;//相应码
+				CURLcode code = curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &retcode);
+				if (code == CURLE_OK)
+				{
+					//responseData为Post函数传出参数，保存相应码和相应数据
+					responseData.nRetCode = retcode;
+					responseData.mapContent[_T("body")] = CStringFormat::Utf2U(content);
+				}
+
+				ret = 1;//函数返回值：1代表执行成功
 				break;
 			}
 			Sleep(500);
@@ -263,6 +280,84 @@ int CHttpClient::HttpPost(const BaseString& strRequestUrl, const PostData& postD
 		curl_formfree(formpost);
 		/* free slist */
 		curl_slist_free_all(headerlist);
+	}
+	else
+	{
+		return 0;
+	}
+	return ret;
+}
+
+int CHttpClient::HttpDelete(const BaseString& strRequestUrl, const PostData& postData)
+{
+	CURL *curl;
+	CURLcode res;
+	struct stat file_info;
+	double speed_upload, total_time;
+	FILE *fd;
+	int ret = 0;
+	struct curl_slist *headerlist = NULL;
+
+	/* initalize custom header list (stating that Expect: 100-continue is not wanted */
+	//////////////////////////消息头 开始/////////////////////////////////////////
+	string strKey, strValue, strAll;
+	for (auto it = postData.mapHeaders.begin();it != postData.mapHeaders.end();it++)
+	{
+#ifdef UNICODE
+		strKey = CStringFormat::U2A(it->first);
+		strValue = CStringFormat::U2A(it->second);
+#else
+		strKey = it->first;
+		strValue = it->second;
+#endif
+		strAll = strKey + ": " + strValue;
+		headerlist = curl_slist_append(headerlist, strAll.c_str());
+	}
+	//headerlist = curl_slist_append(headerlist, buf2);//多个自定义header
+	//////////////////////////消息头 结束/////////////////////////////////////////
+
+	curl = curl_easy_init();
+	if (curl) 
+	{
+		curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
+		curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headerlist);//加载请求头
+		curl_easy_setopt(curl, CURLOPT_CUSTOMREQUEST, "DELETE");
+		//curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &http_callback);
+
+		//请求地址格式转化
+#ifdef UNICODE
+		const char* szSrc = CStringFormat::U2A(strRequestUrl).c_str();
+#else
+		const char* szSrc = strRequestUrl.c_str();
+#endif	
+		const int BUF_SIZE = 10240;
+		char* pBuf = new char[BUF_SIZE];
+		UrlEncode(szSrc, pBuf, BUF_SIZE, true);
+
+		curl_easy_setopt(curl, CURLOPT_URL, pBuf);
+		//curl_easy_setopt(curl, CURLOPT_POSTFIELDS, "username=huancong&password=doyou");
+
+		int i = 1;
+		while (i <= 3)
+		{
+			res = curl_easy_perform(curl);
+			if (res != CURLE_OK) 
+			{
+				ret = 0;
+				BASELOG_INFO(_T("HttpDelete: curl_easy_perform() failed: %s"), curl_easy_strerror(res));
+				BASELOG_INFO(_T("第 %d/3 次 执行失败，正在重新执行..."), i);
+			}
+			else 
+			{
+				BASELOG_INFO(_T("HttpDelete: curl_easy_perform() OK"));
+				BASELOG_INFO(_T("第 %d/3 次 执行成功！"), i);
+				ret = 1;
+				break;//下载成功退出循环，否则重试
+				//cout << "receive data:" << endl << g_buf << endl;
+			}
+			Sleep(500);
+		}
+		curl_easy_cleanup(curl);
 	}
 	else
 	{
@@ -312,7 +407,7 @@ bool CHttpClient::Init()
 	return true;
 }
 
-size_t CHttpClient::process_data_get(void *buffer, size_t size, size_t nmemb, void *user_p)
+size_t CHttpClient::process_data_get_file(void *buffer, size_t size, size_t nmemb, void *user_p)
 {
 	FILE *fp = (FILE *)user_p;
 	size_t return_size = fwrite(buffer, size, nmemb, fp);
@@ -321,6 +416,15 @@ size_t CHttpClient::process_data_get(void *buffer, size_t size, size_t nmemb, vo
 	//return size_t();
 }
 
+
+size_t CHttpClient::process_data_get_string(void *buffer, size_t size, size_t nmemb, string &content)
+{
+	long sizes = size * nmemb;
+	string temp;
+	temp = string((char*)buffer, sizes);
+	content += temp;
+	return sizes;
+}
 
 int CHttpClient::progress_func(void* ptr, double TotalToDownload, double NowDownloaded, double TotalToUpload, double NowUploaded)
 {
