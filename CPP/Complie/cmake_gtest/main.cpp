@@ -1,0 +1,22 @@
+#include <iostream>
+#include "add.h"
+#include "gtest/gtest.h"
+
+
+TEST(TestCase,test1 ){
+ASSERT_EQ(12,add(4,8));
+}
+
+TEST(TestCase,test2){
+EXPECT_EQ(5,add(2,3));
+}
+
+TEST(TestCase,test3){
+EXPECT_EQ(3,add(1,2));
+}
+
+int main(int argc, char **argv)
+{
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
+}
